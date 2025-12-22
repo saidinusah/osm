@@ -1,0 +1,87 @@
+services:
+  # Nginx - Serves static viewer
+  nginx:
+    image: nginx:alpine
+    container_name: easy-nginx
+    restart: unless-stopped
+    ports:
+      - "8085:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - nginx_cache:/var/cache/nginx
+      - ./viewer:/usr/share/nginx/html:ro
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # TileServer GL - Serves vector tiles (disabled by default, use --profile tiles to enable)
+  tileserver:
+    image: maptiler/tileserver-gl:latest
+    container_name: easy-tileserver
+    restart: unless-stopped
+    profiles: ["tiles"]
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./tiles:/data
+      - ./styles:/styles
+    command: --config /data/config.json
+
+  # OSRM - Routing engine (disabled by default, use --profile routing to enable)
+  osrm:
+    image: osrm/osrm-backend:latest
+    container_name: easy-osrm
+    restart: unless-stopped
+    profiles: ["routing"]
+    ports:
+      - "5005:5000"
+    volumes:
+      - ./osrm:/data
+    command: osrm-routed --algorithm mld /data/ghana-latest.osrm
+
+  # PostGIS - Spatial database for business data (charging stations, etc.)
+  postgis:
+    image: postgis/postgis:16-3.4
+    container_name: easy-postgis
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: easy_maps
+      POSTGRES_USER: easy
+      POSTGRES_PASSWORD: easy_secret_password
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U easy -d easy_maps"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis - Live location storage and geo queries
+  redis:
+    image: redis:7-alpine
+    container_name: easy-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgis_data:
+  redis_data:
+  nginx_cache:
+
+networks:
+  default:
+    name: easy-maps-network

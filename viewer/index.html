@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Easy Maps - Ghana</title>
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+
+        .overlay-panel {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+            padding: 16px;
+            z-index: 1000;
+            max-width: 320px;
+        }
+
+        .overlay-panel h1 {
+            font-size: 18px;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+
+        .overlay-panel p {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .control-section {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+        }
+
+        .control-section label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 6px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            font-weight: normal;
+            cursor: pointer;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #059669;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .status-raster {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-vector {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .info-panel {
+            position: absolute;
+            bottom: 24px;
+            left: 16px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+            padding: 12px 16px;
+            z-index: 1000;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .info-panel strong {
+            color: #333;
+        }
+
+        .maplibregl-popup-content {
+            padding: 16px;
+            border-radius: 8px;
+        }
+
+        .station-popup h3 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            color: #1a1a1a;
+        }
+
+        .station-popup p {
+            margin: 4px 0;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .station-popup .connectors {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .station-popup .connector-badge {
+            padding: 2px 6px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+
+    <div class="overlay-panel">
+        <h1>Easy Maps - Ghana</h1>
+        <p>Self-hosted map prototype for EV charging infrastructure.</p>
+
+        <div class="control-section">
+            <label>Map Layers</label>
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" id="layer-stations" checked>
+                    Charging Stations
+                </label>
+                <label>
+                    <input type="checkbox" id="layer-service-areas">
+                    Service Areas
+                </label>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <label>Actions</label>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="centerOnGhana()">Center on Ghana</button>
+                <button class="btn btn-secondary" onclick="getRoute()">Test Route</button>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <label>Tile Source</label>
+            <span class="status-badge status-raster" id="tile-status">OSM Tiles</span>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <strong>Coordinates:</strong> <span id="coordinates">--</span> |
+        <strong>Zoom:</strong> <span id="zoom-level">--</span>
+    </div>
+
+    <script>
+        // Ghana center and bounds
+        const GHANA_CENTER = [-1.0232, 7.9465];
+        const GHANA_BOUNDS = [[-3.5, 4.5], [1.5, 11.5]];
+
+        // Sample charging stations
+        const CHARGING_STATIONS = [
+            { id: 1, name: 'Easy Accra Central', coords: [-0.1870, 5.5560], connectors: ['CCS2', 'CHAdeMO', 'Type2'], power: 150, address: 'Independence Ave, Accra' },
+            { id: 2, name: 'Easy Kumasi Hub', coords: [-1.6163, 6.6885], connectors: ['CCS2', 'Type2'], power: 100, address: 'Harper Road, Kumasi' },
+            { id: 3, name: 'Easy Tema Port', coords: [-0.0167, 5.6698], connectors: ['CCS2', 'CHAdeMO'], power: 350, address: 'Harbour Road, Tema' },
+            { id: 4, name: 'Easy Cape Coast', coords: [-1.2466, 5.1053], connectors: ['CCS2', 'Type2'], power: 50, address: 'Chapel Square, Cape Coast' },
+            { id: 5, name: 'Easy Takoradi', coords: [-1.7557, 4.8929], connectors: ['CCS2', 'Type2'], power: 75, address: 'Market Circle, Takoradi' }
+        ];
+
+        let map;
+        let routeLayer = null;
+
+        // Initialize map with CARTO raster tiles
+        function initMap() {
+            map = new maplibregl.Map({
+                container: 'map',
+                // style: {
+                //     version: 8,
+                //     sources: {
+                //         'osm': {
+                //             type: 'raster',
+                //             tiles: [
+                //                 "http://localhost:8080/tiles/styles/ghana/style.json",
+                //                 "http://localhost:8080/tiles/data/osm_tiles/{z}/{x}/{y}.png",
+                //                 'http://localhost:8080/styles/ghana/style.json',
+                //                 'http://localhost:8080/tiles/fonts/{fontstack}/{range}.pbf',
+                //             ],
+                //             tileSize: 256,
+                //             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                //         }
+                //     },
+                //     layers: [{
+                //         id: 'osm-tiles',
+                //         type: 'raster',
+                //         source: 'osm',
+                //         minzoom: 0,
+                //         maxzoom: 19
+                //     }]
+                // },
+                style: 'http://localhost:8080/styles/ghana/style.json',
+                center: GHANA_CENTER,
+                zoom: 6
+            });
+
+            // Log any errors
+            map.on('error', (e) => {
+                console.error('Map error:', e.error);
+            });
+
+            map.addControl(new maplibregl.NavigationControl(), 'top-right');
+            map.addControl(new maplibregl.ScaleControl(), 'bottom-right');
+
+            map.on('move', updateInfoPanel);
+
+            map.on('load', () => {
+                // map.addSource('ghana-vector', {
+                //     type: 'vector',
+                //     // This is the URL to your TileJSON file
+                //     url: 'http://localhost:8080/data/ghana.json'
+                // });
+
+                // map.addLayer({
+                //     'id': 'roads',
+                //     'type': 'line',
+                //     'source': 'ghana-vector',
+                //     'source-layer': 'roads', // Must match an ID from your vector_layers list
+                //     'paint': {
+                //         'line-color': '#ff0000',
+                //         'line-width': 2
+                //     }
+                // });
+                addChargingStations();
+                addServiceArea();
+                setupLayerToggles();
+            });
+        }
+
+        function addChargingStations() {
+            const geojson = {
+                type: 'FeatureCollection',
+                features: CHARGING_STATIONS.map(s => ({
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: s.coords },
+                    properties: s
+                }))
+            };
+
+            map.addSource('stations', { type: 'geojson', data: geojson });
+
+            // Station circles
+            map.addLayer({
+                id: 'stations-circle',
+                type: 'circle',
+                source: 'stations',
+                paint: {
+                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 8, 12, 14],
+                    'circle-color': '#10b981',
+                    'circle-stroke-width': 3,
+                    'circle-stroke-color': '#ffffff'
+                }
+            });
+
+            // Station labels
+            map.addLayer({
+                id: 'stations-label',
+                type: 'symbol',
+                source: 'stations',
+                minzoom: 8,
+                layout: {
+                    'text-field': ['get', 'name'],
+                    'text-size': 12,
+                    'text-offset': [0, 1.8],
+                    'text-anchor': 'top',
+                    'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular']
+                },
+                paint: {
+                    'text-color': '#1a1a1a',
+                    'text-halo-color': '#fff',
+                    'text-halo-width': 2
+                }
+            });
+
+            // Click popup
+            map.on('click', 'stations-circle', (e) => {
+                const p = e.features[0].properties;
+                const connectors = JSON.parse(p.connectors);
+                new maplibregl.Popup()
+                    .setLngLat(e.lngLat)
+                    .setHTML(`
+                        <div class="station-popup">
+                            <h3>${p.name}</h3>
+                            <p>${p.address}</p>
+                            <p><strong>Max Power:</strong> ${p.power} kW</p>
+                            <div class="connectors">
+                                ${connectors.map(c => `<span class="connector-badge">${c}</span>`).join('')}
+                            </div>
+                        </div>
+                    `)
+                    .addTo(map);
+            });
+
+            map.on('mouseenter', 'stations-circle', () => map.getCanvas().style.cursor = 'pointer');
+            map.on('mouseleave', 'stations-circle', () => map.getCanvas().style.cursor = '');
+        }
+
+        function addServiceArea() {
+            // Greater Accra service area polygon
+            const serviceArea = {
+                type: 'Feature',
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [[
+                        [-0.4, 5.4], [0.2, 5.4], [0.2, 5.8], [-0.4, 5.8], [-0.4, 5.4]
+                    ]]
+                },
+                properties: { name: 'Greater Accra Service Area' }
+            };
+
+            map.addSource('service-area', { type: 'geojson', data: serviceArea });
+
+            map.addLayer({
+                id: 'service-area-fill',
+                type: 'fill',
+                source: 'service-area',
+                paint: {
+                    'fill-color': '#10b981',
+                    'fill-opacity': 0.1
+                },
+                layout: { visibility: 'none' }
+            });
+
+            map.addLayer({
+                id: 'service-area-line',
+                type: 'line',
+                source: 'service-area',
+                paint: {
+                    'line-color': '#10b981',
+                    'line-width': 2,
+                    'line-dasharray': [4, 2]
+                },
+                layout: { visibility: 'none' }
+            });
+        }
+
+        function setupLayerToggles() {
+            document.getElementById('layer-stations').addEventListener('change', (e) => {
+                const v = e.target.checked ? 'visible' : 'none';
+                map.setLayoutProperty('stations-circle', 'visibility', v);
+                map.setLayoutProperty('stations-label', 'visibility', v);
+            });
+
+            document.getElementById('layer-service-areas').addEventListener('change', (e) => {
+                const v = e.target.checked ? 'visible' : 'none';
+                map.setLayoutProperty('service-area-fill', 'visibility', v);
+                map.setLayoutProperty('service-area-line', 'visibility', v);
+            });
+        }
+
+        function updateInfoPanel() {
+            const c = map.getCenter();
+            document.getElementById('coordinates').textContent = `${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`;
+            document.getElementById('zoom-level').textContent = map.getZoom().toFixed(1);
+        }
+
+        function centerOnGhana() {
+            map.flyTo({ center: GHANA_CENTER, zoom: 6, duration: 1500 });
+        }
+
+        // Test OSRM routing (Accra to Kumasi)
+        async function getRoute() {
+            const start = CHARGING_STATIONS[0].coords; // Accra
+            const end = CHARGING_STATIONS[2].coords;   // Kumasi
+
+            try {
+                // Try local OSRM first
+                let response = await fetch(`http://localhost:5005/route/v1/driving/${start.join(',')};${end.join(',')}?overview=full&geometries=geojson`);
+
+                // if (!response.ok) {
+                //     // Fallback to OSRM demo server
+                //     console.log('fetching from demo server')
+                //     response = await fetch(`https://router.project-osrm.org/route/v1/driving/${start.join(',')};${end.join(',')}?overview=full&geometries=geojson`);
+                // }
+
+                const data = await response.json();
+
+                if (data.routes && data.routes[0]) {
+                    const route = data.routes[0];
+                    const distance = (route.distance / 1000).toFixed(1);
+                    const duration = Math.round(route.duration / 60);
+
+                    // Remove existing route
+                    if (map.getSource('route')) {
+                        map.removeLayer('route-line');
+                        map.removeSource('route');
+                    }
+
+                    // Add route to map
+                    map.addSource('route', {
+                        type: 'geojson',
+                        data: {
+                            type: 'Feature',
+                            geometry: route.geometry
+                        }
+                    });
+
+                    map.addLayer({
+                        id: 'route-line',
+                        type: 'line',
+                        source: 'route',
+                        paint: {
+                            'line-color': '#3b82f6',
+                            'line-width': 5,
+                            'line-opacity': 0.8
+                        }
+                    }, 'stations-circle');
+
+                    // Fit to route bounds
+                    const coords = route.geometry.coordinates;
+                    const bounds = coords.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(coords[0], coords[0]));
+                    map.fitBounds(bounds, { padding: 50 });
+
+                    alert(`Route: Accra to Kumasi\nDistance: ${distance} km\nDuration: ${duration} min`);
+                }
+            } catch (err) {
+                console.error('Routing error:', err);
+                alert('Routing service not available. Make sure OSRM is running or check internet connection.');
+            }
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', initMap);
+    </script>
+</body>
+
+</html>
