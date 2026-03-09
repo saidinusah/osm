@@ -31,6 +31,11 @@ download-data:
 generate-tiles:
 	@./scripts/generate-mbtiles.sh
 
+
+# Download fonts
+download-fonts:
+	@./scripts/download-fonts.sh
+
 # Prepare OSRM routing data
 prepare-osrm:
 	@./scripts/prepare-osrm.sh

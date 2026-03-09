@@ -3,3 +3,5 @@
 osrm/*
 *.DS_Store
 *.mbtiles
+
+styles/fonts/*
