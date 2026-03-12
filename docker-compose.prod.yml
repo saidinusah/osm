@@ -6,7 +6,7 @@ services:
     expose:
       - "80"
     volumes:
-      - ./nginx/conf.d/prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - nginx_cache:/var/cache/nginx
       - ./viewer:/usr/share/nginx/html:ro
     depends_on:

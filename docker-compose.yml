@@ -7,7 +7,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro
       - nginx_cache:/var/cache/nginx
       - ./viewer:/usr/share/nginx/html:ro
     healthcheck:
