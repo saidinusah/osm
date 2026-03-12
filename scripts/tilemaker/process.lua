@@ -1,38 +1,43 @@
--- Tilemaker processing script for Ghana
+-- Tilemaker v3 processing script for Ghana
 -- Based on OpenMapTiles schema
+-- Note: v3 API uses direct function calls (Find, Layer, etc.) instead of object methods
 
--- Attribute keys to retain
-areaKeys = { "natural", "landuse", "leisure", "amenity", "building", "place" }
+-- Attribute keys that indicate a closed way should be treated as a polygon
+areaKeys = { natural="yes", landuse="yes", leisure="yes", amenity="yes", building="yes", place="yes" }
+
+-- Filter: only process nodes with these tags
+node_keys = { "place", "amenity" }
+
+-- Filter: only process ways with these tags
+way_keys = { "highway", "waterway", "natural", "landuse", "building", "leisure", "amenity", "aeroway", "boundary" }
 
 -- Process nodes (points)
-function node_function(node)
-    if node == nil then return end
-
-    local place = node:Find("place")
-    local name = node:Find("name")
-    local amenity = node:Find("amenity")
+function node_function()
+    local place = Find("place")
+    local name = Find("name")
+    local amenity = Find("amenity")
 
     -- Places (cities, towns, villages)
     if place ~= "" and name ~= "" then
-        node:Layer("place", false)
-        node:Attribute("name", name)
-        node:Attribute("class", place)
+        Layer("place", false)
+        Attribute("name", name)
+        Attribute("class", place)
 
         if place == "city" then
-            node:MinZoom(3)
-            node:AttributeNumeric("rank", 1)
+            MinZoom(3)
+            AttributeNumeric("rank", 1)
         elseif place == "town" then
-            node:MinZoom(6)
-            node:AttributeNumeric("rank", 2)
+            MinZoom(6)
+            AttributeNumeric("rank", 2)
         elseif place == "village" then
-            node:MinZoom(10)
-            node:AttributeNumeric("rank", 3)
+            MinZoom(10)
+            AttributeNumeric("rank", 3)
         elseif place == "hamlet" or place == "suburb" then
-            node:MinZoom(12)
-            node:AttributeNumeric("rank", 4)
+            MinZoom(12)
+            AttributeNumeric("rank", 4)
         else
-            node:MinZoom(14)
-            node:AttributeNumeric("rank", 5)
+            MinZoom(14)
+            AttributeNumeric("rank", 5)
         end
         return
     end
@@ -41,46 +46,44 @@ function node_function(node)
     if amenity ~= "" then
         -- EV charging stations - important for AMEV!
         if amenity == "charging_station" then
-            node:Layer("poi", false)
-            node:Attribute("name", name or "")
-            node:Attribute("class", "charging_station")
-            node:Attribute("subclass", "ev_charging")
-            node:MinZoom(12)
+            Layer("poi", false)
+            Attribute("name", name)
+            Attribute("class", "charging_station")
+            Attribute("subclass", "ev_charging")
+            MinZoom(12)
             return
         end
         -- Fuel stations
         if amenity == "fuel" then
-            node:Layer("poi", false)
-            node:Attribute("name", name or "")
-            node:Attribute("class", "fuel")
-            node:MinZoom(13)
+            Layer("poi", false)
+            Attribute("name", name)
+            Attribute("class", "fuel")
+            MinZoom(13)
             return
         end
         -- Parking
         if amenity == "parking" then
-            node:Layer("poi", false)
-            node:Attribute("name", name or "")
-            node:Attribute("class", "parking")
-            node:MinZoom(14)
+            Layer("poi", false)
+            Attribute("name", name)
+            Attribute("class", "parking")
+            MinZoom(14)
             return
         end
     end
 end
 
 -- Process ways (lines and polygons)
-function way_function(way)
-    if way == nil then return end
-
-    local highway = way:Find("highway")
-    local waterway = way:Find("waterway")
-    local natural = way:Find("natural")
-    local landuse = way:Find("landuse")
-    local building = way:Find("building")
-    local leisure = way:Find("leisure")
-    local amenity = way:Find("amenity")
-    local aeroway = way:Find("aeroway")
-    local boundary = way:Find("boundary")
-    local name = way:Find("name")
+function way_function()
+    local highway = Find("highway")
+    local waterway = Find("waterway")
+    local natural = Find("natural")
+    local landuse = Find("landuse")
+    local building = Find("building")
+    local leisure = Find("leisure")
+    local amenity = Find("amenity")
+    local aeroway = Find("aeroway")
+    local boundary = Find("boundary")
+    local name = Find("name")
 
     -- Transportation (roads)
     if highway ~= "" then
@@ -119,18 +122,18 @@ function way_function(way)
             class = "path"
         end
 
-        way:Layer("transportation", false)
-        way:MinZoom(minzoom)
-        way:Attribute("class", class)
+        Layer("transportation", false)
+        MinZoom(minzoom)
+        Attribute("class", class)
 
         if name ~= "" then
-            way:Layer("transportation_name", false)
-            way:MinZoom(math.max(minzoom, 8))
-            way:Attribute("name", name)
-            way:Attribute("class", class)
-            local ref = way:Find("ref")
+            Layer("transportation_name", false)
+            MinZoom(math.max(minzoom, 8))
+            Attribute("name", name)
+            Attribute("class", class)
+            local ref = Find("ref")
             if ref ~= "" then
-                way:Attribute("ref", ref)
+                Attribute("ref", ref)
             end
         end
         return
@@ -139,32 +142,32 @@ function way_function(way)
     -- Waterways
     if waterway ~= "" then
         if waterway == "river" or waterway == "canal" then
-            way:Layer("waterway", false)
-            way:MinZoom(8)
-            way:Attribute("class", waterway)
+            Layer("waterway", false)
+            MinZoom(8)
+            Attribute("class", waterway)
             if name ~= "" then
-                way:Layer("water_name", false)
-                way:MinZoom(10)
-                way:Attribute("name", name)
-                way:Attribute("class", waterway)
+                Layer("water_name", false)
+                MinZoom(10)
+                Attribute("name", name)
+                Attribute("class", waterway)
             end
         elseif waterway == "stream" then
-            way:Layer("waterway", false)
-            way:MinZoom(12)
-            way:Attribute("class", waterway)
+            Layer("waterway", false)
+            MinZoom(12)
+            Attribute("class", waterway)
         end
         return
     end
 
     -- Water bodies
     if natural == "water" or landuse == "reservoir" or landuse == "basin" then
-        if way:IsClosed() then
-            way:Layer("water", true)
-            way:MinZoom(4)
-            way:Attribute("class", natural == "water" and "lake" or "reservoir")
+        if IsClosed() then
+            Layer("water", true)
+            MinZoom(4)
+            Attribute("class", natural == "water" and "lake" or "reservoir")
             if name ~= "" then
-                way:LayerAsCentroid("water_name")
-                way:Attribute("name", name)
+                LayerAsCentroid("water_name")
+                Attribute("name", name)
             end
         end
         return
@@ -172,124 +175,122 @@ function way_function(way)
 
     -- Coastline
     if natural == "coastline" then
-        way:Layer("water", false)
-        way:MinZoom(0)
-        way:Attribute("class", "ocean")
+        Layer("water", false)
+        MinZoom(0)
+        Attribute("class", "ocean")
         return
     end
 
     -- Land cover
     if natural == "wood" or natural == "forest" or landuse == "forest" then
-        way:Layer("landcover", true)
-        way:MinZoom(7)
-        way:Attribute("class", "wood")
+        Layer("landcover", true)
+        MinZoom(7)
+        Attribute("class", "wood")
         return
     end
 
     if natural == "grassland" or natural == "scrub" or natural == "heath" then
-        way:Layer("landcover", true)
-        way:MinZoom(10)
-        way:Attribute("class", "grass")
+        Layer("landcover", true)
+        MinZoom(10)
+        Attribute("class", "grass")
         return
     end
 
     -- Land use
     if landuse == "residential" or landuse == "commercial" or landuse == "industrial" or landuse == "retail" then
-        way:Layer("landuse", true)
-        way:MinZoom(10)
-        way:Attribute("class", landuse)
+        Layer("landuse", true)
+        MinZoom(10)
+        Attribute("class", landuse)
         return
     end
 
     -- Parks and leisure
     if leisure == "park" or leisure == "garden" or leisure == "playground" then
-        way:Layer("park", true)
-        way:MinZoom(11)
-        way:Attribute("class", leisure)
+        Layer("park", true)
+        MinZoom(11)
+        Attribute("class", leisure)
         if name ~= "" then
-            way:Attribute("name", name)
+            Attribute("name", name)
         end
         return
     end
 
     -- Buildings
     if building ~= "" and building ~= "no" then
-        way:Layer("building", true)
-        way:MinZoom(13)
+        Layer("building", true)
+        MinZoom(13)
         return
     end
 
     -- Aeroway
     if aeroway == "runway" or aeroway == "taxiway" then
-        way:Layer("aeroway", false)
-        way:MinZoom(10)
-        way:Attribute("class", aeroway)
+        Layer("aeroway", false)
+        MinZoom(10)
+        Attribute("class", aeroway)
         return
     end
     if aeroway == "aerodrome" then
-        way:Layer("aeroway", true)
-        way:MinZoom(10)
-        way:Attribute("class", aeroway)
+        Layer("aeroway", true)
+        MinZoom(10)
+        Attribute("class", aeroway)
         if name ~= "" then
-            way:Attribute("name", name)
+            Attribute("name", name)
         end
         return
     end
 
     -- Admin boundaries
     if boundary == "administrative" then
-        local admin_level = way:Find("admin_level")
+        local admin_level = Find("admin_level")
         if admin_level == "2" then
-            way:Layer("boundary", false)
-            way:MinZoom(0)
-            way:Attribute("admin_level", 2)
+            Layer("boundary", false)
+            MinZoom(0)
+            Attribute("admin_level", 2)
         elseif admin_level == "4" then
-            way:Layer("boundary", false)
-            way:MinZoom(4)
-            way:Attribute("admin_level", 4)
+            Layer("boundary", false)
+            MinZoom(4)
+            Attribute("admin_level", 4)
         elseif admin_level == "6" then
-            way:Layer("boundary", false)
-            way:MinZoom(8)
-            way:Attribute("admin_level", 6)
+            Layer("boundary", false)
+            MinZoom(8)
+            Attribute("admin_level", 6)
         end
         return
     end
 end
 
 -- Handle relations
-function relation_scan_function(relation)
-    if relation == nil then return end
-    local reltype = relation:Find("type")
-    if reltype == nil or reltype == "" then return end
+function relation_scan_function()
+    local reltype = Find("type")
+    if reltype == "" then return end
 
     if reltype == "boundary" then
-        local boundary = relation:Find("boundary")
+        local boundary = Find("boundary")
         if boundary == "administrative" then
-            relation:Accept()
+            Accept()
         end
     elseif reltype == "multipolygon" then
-        relation:Accept()
+        Accept()
     end
 end
 
-function relation_function(relation)
-    if relation == nil then return end
-    local reltype = relation:Find("type")
-    if reltype == nil or reltype == "" then return end
+function relation_function()
+    local reltype = Find("type")
+    if reltype == "" then return end
 
     if reltype == "boundary" then
-        local boundary = relation:Find("boundary")
-        local admin_level = relation:Find("admin_level")
-        if boundary == "administrative" and admin_level ~= nil and admin_level ~= "" then
-            relation:Layer("boundary", false)
+        local boundary = Find("boundary")
+        local admin_level = Find("admin_level")
+        if boundary == "administrative" and admin_level ~= "" then
+            Layer("boundary", false)
             if admin_level == "2" then
-                relation:MinZoom(0)
+                MinZoom(0)
             elseif admin_level == "4" then
-                relation:MinZoom(4)
+                MinZoom(4)
             else
-                relation:MinZoom(8)
+                MinZoom(8)
             end
-            relation:AttributeNumeric("admin_level", tonumber(admin_level) or 8)
+            AttributeNumeric("admin_level", tonumber(admin_level) or 8)
         end
     end
 end

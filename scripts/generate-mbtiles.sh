@@ -39,16 +39,24 @@ echo "(Note: On Apple Silicon, this runs via Rosetta emulation - performance is 
 # Remove existing mbtiles to avoid issues
 rm -f "$OUTPUT_MBTILES"
 
+# Create temp directory for tilemaker's on-disk store (reduces RAM usage)
+STORE_DIR="$PROJECT_DIR/.tilemaker-tmp"
+mkdir -p "$STORE_DIR"
+
 docker run --rm \
     -v "$DATA_DIR:/data" \
     -v "$TILES_DIR:/output" \
     -v "$SCRIPT_DIR/tilemaker:/config" \
+    -v "$STORE_DIR:/store" \
     ghcr.io/systemed/tilemaker:master \
     --input /data/ghana-latest.osm.pbf \
     --output /output/ghana.mbtiles \
     --config /config/config.json \
     --process /config/process.lua \
-    --skip-integrity
+    --store /store
+
+# Clean up temp store
+rm -rf "$STORE_DIR"
 
 echo ""
 echo "MBTiles generation complete!"

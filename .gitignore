@@ -5,3 +5,4 @@ osrm/*
 *.mbtiles
 
 styles/fonts/*
+.tilemaker-tmp/
