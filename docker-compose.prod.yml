@@ -29,7 +29,7 @@ services:
     expose:
       - "8080"
     volumes:
-      - tiles_data:/data
+      - ./tiles:/data
       - ./styles:/styles
     command: --config /data/config.json
 
@@ -40,7 +40,7 @@ services:
     expose:
       - "5000"
     volumes:
-      - osrm_data:/data
+      - ./osrm:/data
     command: osrm-routed --algorithm mld /data/ghana-latest.osrm
 
   # PostGIS - Spatial database
@@ -88,7 +88,7 @@ services:
       NOMINATIM_PASSWORD: ${NOMINATIM_PASSWORD:?NOMINATIM_PASSWORD is required}
     volumes:
       - nominatim_pgdata:/var/lib/postgresql/data
-      - osm_data:/data
+      - ./data:/data
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/status.php || exit 1"]
       interval: 60s
@@ -100,9 +100,6 @@ volumes:
   redis_data:
   nginx_cache:
   nominatim_pgdata:
-  tiles_data:
-  osrm_data:
-  osm_data:
 
 networks:
   default:
