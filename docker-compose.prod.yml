@@ -1,4 +1,15 @@
 services:
+  # Setup - One-time data pipeline: downloads OSM data, fonts, and builds MBTiles
+  setup:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    volumes:
+      - osm_data:/app/data
+      - tiles_data:/app/tiles
+      - styles_data:/app/styles
+    restart: "no"
+
   # Nginx - Reverse proxy + viewer SPA (built from Dockerfile)
   nginx:
     build:
@@ -28,8 +39,12 @@ services:
       - "8080"
     volumes:
       - tiles_data:/data
+      - ./tiles/config.json:/data/config.json:ro
       - styles_data:/styles
     command: --config /data/config.json
+    depends_on:
+      setup:
+        condition: service_completed_successfully
 
   # OSRM - Routing engine (MLD algorithm)
   osrm:
@@ -93,6 +108,9 @@ services:
     volumes:
       - nominatim_pgdata:/var/lib/postgresql/data
       - osm_data:/data
+    depends_on:
+      setup:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/status.php || exit 1"]
       interval: 60s
