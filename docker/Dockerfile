@@ -26,4 +26,6 @@ RUN chmod +x /app/setup.sh
 #   /app/styles  → fonts output
 VOLUME ["/app/data", "/app/tiles", "/app/styles"]
 
-ENTRYPOINT ["/app/setup.sh"]
+# Reset the tilemaker image's entrypoint so our setup.sh runs directly
+ENTRYPOINT []
+CMD ["/bin/bash", "/app/setup.sh"]
