@@ -1,24 +1,12 @@
-FROM debian:bookworm-slim
+# Use tilemaker image as base — already multi-arch, binary at /usr/local/bin/tilemaker
+FROM ghcr.io/systemed/tilemaker:master
 
-# Install dependencies
+# Install download/extract tools on top
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     unzip \
     ca-certificates \
-    sqlite3 \
-    python3 \
     && rm -rf /var/lib/apt/lists/*
-
-# Install tilemaker binary (avoids Docker-in-Docker for tile generation)
-RUN ARCH=$(dpkg --print-architecture) && \
-    if [ "$ARCH" = "amd64" ]; then TM_ARCH="linux-amd64"; \
-    elif [ "$ARCH" = "arm64" ]; then TM_ARCH="linux-arm64"; \
-    else echo "Unsupported arch: $ARCH" && exit 1; fi && \
-    curl -L -o /tmp/tilemaker.gz \
-        "https://github.com/systemed/tilemaker/releases/download/v3.0.0/tilemaker-${TM_ARCH}.gz" && \
-    gunzip /tmp/tilemaker.gz && \
-    mv /tmp/tilemaker /usr/local/bin/tilemaker && \
-    chmod +x /usr/local/bin/tilemaker
 
 WORKDIR /app
 
