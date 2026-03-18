@@ -4,6 +4,8 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
+    entrypoint: []
+    command: ["/bin/bash", "/app/setup.sh"]
     volumes:
       - osm_data:/app/data
       - tiles_data:/app/tiles
