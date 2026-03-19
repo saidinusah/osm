@@ -272,7 +272,7 @@
                 //         maxzoom: 19
                 //     }]
                 // },
-                style: 'http://localhost:8080/styles/ghana/style.json',
+                style: '/tiles/styles/ghana/style.json',
                 center: GHANA_CENTER,
                 zoom: 6
             });
@@ -448,7 +448,7 @@
 
             try {
                 // Try local OSRM first
-                let response = await fetch(`http://localhost:5005/route/v1/driving/${start.join(',')};${end.join(',')}?overview=full&geometries=geojson`);
+                let response = await fetch(`/route/v1/driving/${start.join(',')};${end.join(',')}?overview=full&geometries=geojson`);
 
                 // if (!response.ok) {
                 //     // Fallback to OSRM demo server
