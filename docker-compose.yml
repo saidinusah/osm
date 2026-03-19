@@ -4,8 +4,8 @@ services:
     image: nginx:alpine
     container_name: easy-nginx
     restart: unless-stopped
-    ports:
-      - "80:80"
+    expose:
+      - "80"
     networks:
       - default
       - coolify
@@ -20,13 +20,6 @@ services:
       - ./nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro
       - nginx_cache:/var/cache/nginx
       - ./viewer:/usr/share/nginx/html:ro
-    depends_on:
-      easy-tileserver:
-        condition: service_started
-      easy-osrm:
-        condition: service_started
-      easy-nominatim:
-        condition: service_started
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 30s
