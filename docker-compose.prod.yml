@@ -20,6 +20,16 @@ services:
     restart: unless-stopped
     expose:
       - "80"
+    networks:
+      - default
+      - coolify
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.amev-maps.rule=Host(`${DOMAIN:?DOMAIN is required}`)
+      - traefik.http.routers.amev-maps.entrypoints=https
+      - traefik.http.routers.amev-maps.tls=true
+      - traefik.http.routers.amev-maps.tls.certresolver=letsencrypt
+      - traefik.http.services.amev-maps.loadbalancer.server.port=80
     depends_on:
       tileserver:
         condition: service_started
@@ -131,3 +141,6 @@ volumes:
 networks:
   default:
     name: amev-maps-network
+  coolify:
+    external: true
+    name: coolify
