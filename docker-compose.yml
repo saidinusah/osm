@@ -98,8 +98,7 @@ services:
       - PBF_PATH=/data/ghana-latest.osm.pbf
       - NOMINATIM_PASSWORD=nominatim_pass
     volumes:
-      # Map your existing tiles/data folder so Nominatim can see the PBF
-      - ./tiles:/data
+      - ./data:/data
       - nominatim_data:/var/lib/postgresql/data
     networks:
       - default
