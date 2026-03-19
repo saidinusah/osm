@@ -21,11 +21,11 @@ services:
       - nginx_cache:/var/cache/nginx
       - ./viewer:/usr/share/nginx/html:ro
     depends_on:
-      tileserver:
+      easy-tileserver:
         condition: service_started
-      osrm:
+      easy-osrm:
         condition: service_started
-      nominatim:
+      easy-nominatim:
         condition: service_started
     healthcheck:
       test: ["CMD", "nginx", "-t"]
