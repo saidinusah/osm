@@ -20,6 +20,13 @@ services:
       - ./nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro
       - nginx_cache:/var/cache/nginx
       - ./viewer:/usr/share/nginx/html:ro
+    depends_on:
+      tileserver:
+        condition: service_started
+      osrm:
+        condition: service_started
+      nominatim:
+        condition: service_started
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 30s
