@@ -288,22 +288,7 @@
             map.on('move', updateInfoPanel);
 
             map.on('load', () => {
-                // map.addSource('ghana-vector', {
-                //     type: 'vector',
-                //     // This is the URL to your TileJSON file
-                //     url: 'http://localhost:8080/data/ghana.json'
-                // });
-
-                // map.addLayer({
-                //     'id': 'roads',
-                //     'type': 'line',
-                //     'source': 'ghana-vector',
-                //     'source-layer': 'roads', // Must match an ID from your vector_layers list
-                //     'paint': {
-                //         'line-color': '#ff0000',
-                //         'line-width': 2
-                //     }
-                // });
+            
                 addChargingStations();
                 addServiceArea();
                 setupLayerToggles();
