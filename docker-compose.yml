@@ -29,7 +29,6 @@ services:
     image: maptiler/tileserver-gl:latest
     container_name: easy-tileserver
     restart: unless-stopped
-    profiles: ["tiles"]
     ports:
       - "8085:8080"
     volumes:

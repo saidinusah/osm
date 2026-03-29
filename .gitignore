@@ -6,3 +6,4 @@ osrm/*
 
 styles/fonts/*
 .tilemaker-tmp/
+.claude/worktrees/

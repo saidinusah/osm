@@ -12,7 +12,8 @@
   "sources": {
     "openmaptiles": {
       "type": "vector",
-      "url": "/tiles/data/ghana.json"
+      "tiles": ["/tiles/data/ghana/{z}/{x}/{y}.pbf"],
+      "maxzoom": 14
     }
   },
   "glyphs": "https://demotiles.maplibre.org/fonts/{fontstack}/{range}.pbf",
