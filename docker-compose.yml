@@ -12,7 +12,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.routers.amev-maps.rule=Host(`${DOMAIN:?DOMAIN is required}`)
-      - traefik.http.routers.amev-maps.entrypoints=http,https
+      - traefik.http.routers.amev-maps.entrypoints=http
       - traefik.http.services.amev-maps.loadbalancer.server.port=80
     volumes:
       - ./nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro
