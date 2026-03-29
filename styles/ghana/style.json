@@ -12,7 +12,7 @@
   "sources": {
     "openmaptiles": {
       "type": "vector",
-      "url": "http://localhost:8080/data/ghana.json"
+      "url": "/tiles/data/ghana.json"
     }
   },
   "glyphs": "https://demotiles.maplibre.org/fonts/{fontstack}/{range}.pbf",
