@@ -7,3 +7,6 @@ osrm/*
 styles/fonts/*
 .tilemaker-tmp/
 .claude/worktrees/
+
+# Local prod env file — never commit
+.env

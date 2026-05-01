@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Easy Maps - Ghana</title>
+    <title>Gyeme Maps - Ghana</title>
     <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
     <style>
@@ -35,7 +35,7 @@
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
             padding: 16px;
             z-index: 1000;
-            max-width: 320px;
+            max-width: 340px;
         }
 
         .overlay-panel h1 {
@@ -62,6 +62,65 @@
             font-weight: 600;
             color: #333;
             margin-bottom: 6px;
+        }
+
+        .search-container {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: #10b981;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1001;
+            display: none;
+        }
+
+        .search-results.visible {
+            display: block;
+        }
+
+        .search-result-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .search-result-item:hover {
+            background: #f3f4f6;
+        }
+
+        .search-result-item .result-name {
+            font-weight: 500;
+            color: #1a1a1a;
+        }
+
+        .search-result-item .result-type {
+            font-size: 11px;
+            color: #999;
+            margin-top: 2px;
         }
 
         .checkbox-group {
@@ -112,10 +171,24 @@
             background: #e5e7eb;
         }
 
+        .btn-danger {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .btn-danger:hover {
+            background: #fecaca;
+        }
+
         .btn-group {
             display: flex;
             gap: 8px;
             margin-top: 12px;
+        }
+
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 11px;
         }
 
         .status-badge {
@@ -125,11 +198,6 @@
             border-radius: 4px;
             font-size: 11px;
             font-weight: 600;
-        }
-
-        .status-raster {
-            background: #fef3c7;
-            color: #92400e;
         }
 
         .status-vector {
@@ -152,6 +220,57 @@
 
         .info-panel strong {
             color: #333;
+        }
+
+        .route-panel {
+            position: absolute;
+            top: 16px;
+            right: 60px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+            padding: 16px;
+            z-index: 1000;
+            width: 300px;
+            display: none;
+        }
+
+        .route-panel.visible {
+            display: block;
+        }
+
+        .route-panel h3 {
+            font-size: 14px;
+            margin-bottom: 12px;
+            color: #1a1a1a;
+        }
+
+        .route-panel input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+            margin-bottom: 8px;
+        }
+
+        .route-panel input:focus {
+            border-color: #3b82f6;
+        }
+
+        .route-info {
+            margin-top: 12px;
+            padding: 10px;
+            background: #f0f9ff;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #1e40af;
+            display: none;
+        }
+
+        .route-info.visible {
+            display: block;
         }
 
         .maplibregl-popup-content {
@@ -185,6 +304,12 @@
             font-size: 10px;
             font-weight: 600;
         }
+
+        .route-hint {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+        }
     </style>
 </head>
 
@@ -192,8 +317,16 @@
     <div id="map"></div>
 
     <div class="overlay-panel">
-        <h1>Easy Maps - Ghana</h1>
-        <p>Self-hosted map prototype for EV charging infrastructure.</p>
+        <h1>Gyeme Maps - Ghana</h1>
+        <p>Self-hosted GIS for EV charging infrastructure.</p>
+
+        <div class="control-section">
+            <label>Search Places</label>
+            <div class="search-container">
+                <input type="text" class="search-input" id="search-input" placeholder="Search for a place in Ghana...">
+                <div class="search-results" id="search-results"></div>
+            </div>
+        </div>
 
         <div class="control-section">
             <label>Map Layers</label>
@@ -213,14 +346,26 @@
             <label>Actions</label>
             <div class="btn-group">
                 <button class="btn btn-primary" onclick="centerOnGhana()">Center on Ghana</button>
-                <button class="btn btn-secondary" onclick="getRoute()">Test Route</button>
+                <button class="btn btn-secondary" onclick="toggleRoutePanel()">Route</button>
             </div>
         </div>
 
         <div class="control-section">
             <label>Tile Source</label>
-            <span class="status-badge status-raster" id="tile-status">OSM Tiles</span>
+            <span class="status-badge status-vector">Self-hosted Vector Tiles</span>
         </div>
+    </div>
+
+    <div class="route-panel" id="route-panel">
+        <h3>Route Planner</h3>
+        <input type="text" id="route-from" placeholder="From (click map or search)">
+        <input type="text" id="route-to" placeholder="To (click map or search)">
+        <p class="route-hint">Click the map to set start/end points</p>
+        <div class="btn-group">
+            <button class="btn btn-primary btn-sm" onclick="calculateRoute()">Get Route</button>
+            <button class="btn btn-danger btn-sm" onclick="clearRoute()">Clear</button>
+        </div>
+        <div class="route-info" id="route-info"></div>
     </div>
 
     <div class="info-panel">
@@ -229,72 +374,270 @@
     </div>
 
     <script>
-        // Ghana center and bounds
+        // ── Config ──────────────────────────────────────────────────────────────
+        const TILESERVER_URL = 'http://localhost:8085';
+        const NOMINATIM_URL = 'http://localhost:8082';
+        const OSRM_URL = 'http://localhost:5005';
+
         const GHANA_CENTER = [-1.0232, 7.9465];
         const GHANA_BOUNDS = [[-3.5, 4.5], [1.5, 11.5]];
 
-        // Sample charging stations
         const CHARGING_STATIONS = [
-            { id: 1, name: 'Easy Accra Central', coords: [-0.1870, 5.5560], connectors: ['CCS2', 'CHAdeMO', 'Type2'], power: 150, address: 'Independence Ave, Accra' },
-            { id: 2, name: 'Easy Kumasi Hub', coords: [-1.6163, 6.6885], connectors: ['CCS2', 'Type2'], power: 100, address: 'Harper Road, Kumasi' },
-            { id: 3, name: 'Easy Tema Port', coords: [-0.0167, 5.6698], connectors: ['CCS2', 'CHAdeMO'], power: 350, address: 'Harbour Road, Tema' },
-            { id: 4, name: 'Easy Cape Coast', coords: [-1.2466, 5.1053], connectors: ['CCS2', 'Type2'], power: 50, address: 'Chapel Square, Cape Coast' },
-            { id: 5, name: 'Easy Takoradi', coords: [-1.7557, 4.8929], connectors: ['CCS2', 'Type2'], power: 75, address: 'Market Circle, Takoradi' }
+            { id: 1, name: 'Gyeme Accra Central', coords: [-0.1870, 5.5560], connectors: ['CCS2', 'CHAdeMO', 'Type2'], power: 150, address: 'Independence Ave, Accra' },
+            { id: 2, name: 'Gyeme Kumasi Hub', coords: [-1.6163, 6.6885], connectors: ['CCS2', 'Type2'], power: 100, address: 'Harper Road, Kumasi' },
+            { id: 3, name: 'Gyeme Tema Port', coords: [-0.0167, 5.6698], connectors: ['CCS2', 'CHAdeMO'], power: 350, address: 'Harbour Road, Tema' },
+            { id: 4, name: 'Gyeme Cape Coast', coords: [-1.2466, 5.1053], connectors: ['CCS2', 'Type2'], power: 50, address: 'Chapel Square, Cape Coast' },
+            { id: 5, name: 'Gyeme Takoradi', coords: [-1.7557, 4.8929], connectors: ['CCS2', 'Type2'], power: 75, address: 'Market Circle, Takoradi' }
         ];
 
         let map;
-        let routeLayer = null;
+        let searchMarker = null;
+        let routeFromCoords = null;
+        let routeToCoords = null;
+        let routeClickMode = null; // 'from' or 'to'
+        let searchTimeout = null;
 
-        // Initialize map with CARTO raster tiles
+        // ── Map Init ────────────────────────────────────────────────────────────
         function initMap() {
             map = new maplibregl.Map({
                 container: 'map',
-                // style: {
-                //     version: 8,
-                //     sources: {
-                //         'osm': {
-                //             type: 'raster',
-                //             tiles: [
-                //                 "http://localhost:8080/tiles/styles/ghana/style.json",
-                //                 "http://localhost:8080/tiles/data/osm_tiles/{z}/{x}/{y}.png",
-                //                 'http://localhost:8080/styles/ghana/style.json',
-                //                 'http://localhost:8080/tiles/fonts/{fontstack}/{range}.pbf',
-                //             ],
-                //             tileSize: 256,
-                //             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                //         }
-                //     },
-                //     layers: [{
-                //         id: 'osm-tiles',
-                //         type: 'raster',
-                //         source: 'osm',
-                //         minzoom: 0,
-                //         maxzoom: 19
-                //     }]
-                // },
-                style: '/tiles/styles/ghana/style.json',
+                style: `${TILESERVER_URL}/styles/ghana/style.json`,
                 center: GHANA_CENTER,
-                zoom: 6
+                zoom: 7
             });
 
-            // Log any errors
-            map.on('error', (e) => {
-                console.error('Map error:', e.error);
-            });
-
+            map.on('error', (e) => console.error('Map error:', e.error));
             map.addControl(new maplibregl.NavigationControl(), 'top-right');
             map.addControl(new maplibregl.ScaleControl(), 'bottom-right');
-
             map.on('move', updateInfoPanel);
 
             map.on('load', () => {
-            
                 addChargingStations();
                 addServiceArea();
                 setupLayerToggles();
             });
+
+            map.on('click', (e) => {
+                if (routeClickMode === 'from') {
+                    routeFromCoords = [e.lngLat.lng, e.lngLat.lat];
+                    document.getElementById('route-from').value = `${e.lngLat.lat.toFixed(4)}, ${e.lngLat.lng.toFixed(4)}`;
+                    routeClickMode = 'to';
+                    document.querySelector('.route-hint').textContent = 'Now click the destination';
+                    updateRouteMarkers();
+                } else if (routeClickMode === 'to') {
+                    routeToCoords = [e.lngLat.lng, e.lngLat.lat];
+                    document.getElementById('route-to').value = `${e.lngLat.lat.toFixed(4)}, ${e.lngLat.lng.toFixed(4)}`;
+                    routeClickMode = null;
+                    document.querySelector('.route-hint').textContent = 'Click "Get Route" to calculate';
+                    updateRouteMarkers();
+                }
+            });
+
+            setupSearch();
         }
 
+        // ── Search (Nominatim) ──────────────────────────────────────────────────
+        function setupSearch() {
+            const input = document.getElementById('search-input');
+            const results = document.getElementById('search-results');
+
+            input.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                const query = e.target.value.trim();
+                if (query.length < 3) {
+                    results.classList.remove('visible');
+                    return;
+                }
+                searchTimeout = setTimeout(() => searchPlaces(query), 400);
+            });
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    results.classList.remove('visible');
+                    input.blur();
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.search-container')) {
+                    results.classList.remove('visible');
+                }
+            });
+        }
+
+        async function searchPlaces(query) {
+            const results = document.getElementById('search-results');
+            try {
+                const response = await fetch(
+                    `${NOMINATIM_URL}/search?q=${encodeURIComponent(query)}&format=json&countrycodes=gh&limit=8&addressdetails=1`
+                );
+                const data = await response.json();
+
+                if (data.length === 0) {
+                    results.innerHTML = '<div class="search-result-item"><span class="result-name">No results found</span></div>';
+                    results.classList.add('visible');
+                    return;
+                }
+
+                results.innerHTML = data.map(place => `
+                    <div class="search-result-item" onclick="goToPlace(${place.lon}, ${place.lat}, '${place.display_name.replace(/'/g, "\\'")}')">
+                        <div class="result-name">${place.display_name.split(',').slice(0, 2).join(',')}</div>
+                        <div class="result-type">${place.type.replace('_', ' ')}</div>
+                    </div>
+                `).join('');
+                results.classList.add('visible');
+            } catch (err) {
+                results.innerHTML = '<div class="search-result-item"><span class="result-name">Search unavailable</span></div>';
+                results.classList.add('visible');
+            }
+        }
+
+        function goToPlace(lon, lat, name) {
+            document.getElementById('search-results').classList.remove('visible');
+            document.getElementById('search-input').value = name.split(',').slice(0, 2).join(',');
+
+            if (searchMarker) searchMarker.remove();
+            searchMarker = new maplibregl.Marker({ color: '#3b82f6' })
+                .setLngLat([lon, lat])
+                .setPopup(new maplibregl.Popup().setHTML(`<strong>${name.split(',')[0]}</strong>`))
+                .addTo(map);
+
+            map.flyTo({ center: [lon, lat], zoom: 14, duration: 1500 });
+            searchMarker.togglePopup();
+        }
+
+        // ── Routing (OSRM) ──────────────────────────────────────────────────────
+        function toggleRoutePanel() {
+            const panel = document.getElementById('route-panel');
+            panel.classList.toggle('visible');
+            if (panel.classList.contains('visible')) {
+                routeClickMode = 'from';
+                document.querySelector('.route-hint').textContent = 'Click the map to set the start point';
+            } else {
+                routeClickMode = null;
+            }
+        }
+
+        function updateRouteMarkers() {
+            if (map.getSource('route-points')) {
+                map.removeLayer('route-points-layer');
+                map.removeSource('route-points');
+            }
+
+            const features = [];
+            if (routeFromCoords) {
+                features.push({
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: routeFromCoords },
+                    properties: { label: 'A', color: '#22c55e' }
+                });
+            }
+            if (routeToCoords) {
+                features.push({
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: routeToCoords },
+                    properties: { label: 'B', color: '#ef4444' }
+                });
+            }
+
+            if (features.length > 0) {
+                map.addSource('route-points', {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features }
+                });
+                map.addLayer({
+                    id: 'route-points-layer',
+                    type: 'circle',
+                    source: 'route-points',
+                    paint: {
+                        'circle-radius': 8,
+                        'circle-color': ['get', 'color'],
+                        'circle-stroke-width': 3,
+                        'circle-stroke-color': '#ffffff'
+                    }
+                });
+            }
+        }
+
+        async function calculateRoute() {
+            if (!routeFromCoords || !routeToCoords) {
+                alert('Please set both start and end points by clicking the map.');
+                return;
+            }
+
+            const infoEl = document.getElementById('route-info');
+            infoEl.textContent = 'Calculating route...';
+            infoEl.classList.add('visible');
+
+            try {
+                const response = await fetch(
+                    `${OSRM_URL}/route/v1/driving/${routeFromCoords.join(',')};${routeToCoords.join(',')}?overview=full&geometries=geojson`
+                );
+                const data = await response.json();
+
+                if (data.routes && data.routes[0]) {
+                    const route = data.routes[0];
+                    const distance = (route.distance / 1000).toFixed(1);
+                    const duration = Math.round(route.duration / 60);
+                    const hours = Math.floor(duration / 60);
+                    const mins = duration % 60;
+                    const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins} min`;
+
+                    // Remove existing route line
+                    if (map.getSource('route')) {
+                        map.removeLayer('route-line');
+                        map.removeSource('route');
+                    }
+
+                    map.addSource('route', {
+                        type: 'geojson',
+                        data: { type: 'Feature', geometry: route.geometry }
+                    });
+
+                    map.addLayer({
+                        id: 'route-line',
+                        type: 'line',
+                        source: 'route',
+                        paint: {
+                            'line-color': '#3b82f6',
+                            'line-width': 5,
+                            'line-opacity': 0.8
+                        }
+                    }, 'stations-circle');
+
+                    const coords = route.geometry.coordinates;
+                    const bounds = coords.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(coords[0], coords[0]));
+                    map.fitBounds(bounds, { padding: 80 });
+
+                    infoEl.innerHTML = `<strong>${distance} km</strong> &middot; ${timeStr} drive`;
+                } else {
+                    infoEl.textContent = 'No route found between these points.';
+                }
+            } catch (err) {
+                console.error('Routing error:', err);
+                infoEl.textContent = 'Routing service unavailable. Is OSRM running?';
+            }
+        }
+
+        function clearRoute() {
+            if (map.getSource('route')) {
+                map.removeLayer('route-line');
+                map.removeSource('route');
+            }
+            if (map.getSource('route-points')) {
+                map.removeLayer('route-points-layer');
+                map.removeSource('route-points');
+            }
+            routeFromCoords = null;
+            routeToCoords = null;
+            routeClickMode = 'from';
+            document.getElementById('route-from').value = '';
+            document.getElementById('route-to').value = '';
+            document.getElementById('route-info').classList.remove('visible');
+            document.querySelector('.route-hint').textContent = 'Click the map to set the start point';
+        }
+
+        // ── Charging Stations ───────────────────────────────────────────────────
         function addChargingStations() {
             const geojson = {
                 type: 'FeatureCollection',
@@ -307,7 +650,6 @@
 
             map.addSource('stations', { type: 'geojson', data: geojson });
 
-            // Station circles
             map.addLayer({
                 id: 'stations-circle',
                 type: 'circle',
@@ -320,7 +662,6 @@
                 }
             });
 
-            // Station labels
             map.addLayer({
                 id: 'stations-label',
                 type: 'symbol',
@@ -331,7 +672,7 @@
                     'text-size': 12,
                     'text-offset': [0, 1.8],
                     'text-anchor': 'top',
-                    'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular']
+                    'text-font': ['Noto Sans Regular']
                 },
                 paint: {
                     'text-color': '#1a1a1a',
@@ -340,8 +681,8 @@
                 }
             });
 
-            // Click popup
             map.on('click', 'stations-circle', (e) => {
+                if (routeClickMode) return; // don't popup during route selection
                 const p = e.features[0].properties;
                 const connectors = JSON.parse(p.connectors);
                 new maplibregl.Popup()
@@ -363,8 +704,8 @@
             map.on('mouseleave', 'stations-circle', () => map.getCanvas().style.cursor = '');
         }
 
+        // ── Service Areas ───────────────────────────────────────────────────────
         function addServiceArea() {
-            // Greater Accra service area polygon
             const serviceArea = {
                 type: 'Feature',
                 geometry: {
@@ -382,10 +723,7 @@
                 id: 'service-area-fill',
                 type: 'fill',
                 source: 'service-area',
-                paint: {
-                    'fill-color': '#10b981',
-                    'fill-opacity': 0.1
-                },
+                paint: { 'fill-color': '#10b981', 'fill-opacity': 0.1 },
                 layout: { visibility: 'none' }
             });
 
@@ -393,15 +731,12 @@
                 id: 'service-area-line',
                 type: 'line',
                 source: 'service-area',
-                paint: {
-                    'line-color': '#10b981',
-                    'line-width': 2,
-                    'line-dasharray': [4, 2]
-                },
+                paint: { 'line-color': '#10b981', 'line-width': 2, 'line-dasharray': [4, 2] },
                 layout: { visibility: 'none' }
             });
         }
 
+        // ── Layer Toggles ───────────────────────────────────────────────────────
         function setupLayerToggles() {
             document.getElementById('layer-stations').addEventListener('change', (e) => {
                 const v = e.target.checked ? 'visible' : 'none';
@@ -416,6 +751,7 @@
             });
         }
 
+        // ── Info Panel ──────────────────────────────────────────────────────────
         function updateInfoPanel() {
             const c = map.getCenter();
             document.getElementById('coordinates').textContent = `${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`;
@@ -423,71 +759,9 @@
         }
 
         function centerOnGhana() {
-            map.flyTo({ center: GHANA_CENTER, zoom: 6, duration: 1500 });
+            map.flyTo({ center: GHANA_CENTER, zoom: 7, duration: 1500 });
         }
 
-        // Test OSRM routing (Accra to Kumasi)
-        async function getRoute() {
-            const start = CHARGING_STATIONS[0].coords; // Accra
-            const end = CHARGING_STATIONS[2].coords;   // Kumasi
-
-            try {
-                // Try local OSRM first
-                let response = await fetch(`/route/v1/driving/${start.join(',')};${end.join(',')}?overview=full&geometries=geojson`);
-
-                // if (!response.ok) {
-                //     // Fallback to OSRM demo server
-                //     console.log('fetching from demo server')
-                //     response = await fetch(`https://router.project-osrm.org/route/v1/driving/${start.join(',')};${end.join(',')}?overview=full&geometries=geojson`);
-                // }
-
-                const data = await response.json();
-
-                if (data.routes && data.routes[0]) {
-                    const route = data.routes[0];
-                    const distance = (route.distance / 1000).toFixed(1);
-                    const duration = Math.round(route.duration / 60);
-
-                    // Remove existing route
-                    if (map.getSource('route')) {
-                        map.removeLayer('route-line');
-                        map.removeSource('route');
-                    }
-
-                    // Add route to map
-                    map.addSource('route', {
-                        type: 'geojson',
-                        data: {
-                            type: 'Feature',
-                            geometry: route.geometry
-                        }
-                    });
-
-                    map.addLayer({
-                        id: 'route-line',
-                        type: 'line',
-                        source: 'route',
-                        paint: {
-                            'line-color': '#3b82f6',
-                            'line-width': 5,
-                            'line-opacity': 0.8
-                        }
-                    }, 'stations-circle');
-
-                    // Fit to route bounds
-                    const coords = route.geometry.coordinates;
-                    const bounds = coords.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(coords[0], coords[0]));
-                    map.fitBounds(bounds, { padding: 50 });
-
-                    alert(`Route: Accra to Kumasi\nDistance: ${distance} km\nDuration: ${duration} min`);
-                }
-            } catch (err) {
-                console.error('Routing error:', err);
-                alert('Routing service not available. Make sure OSRM is running or check internet connection.');
-            }
-        }
-
-        // Initialize on load
         document.addEventListener('DOMContentLoaded', initMap);
     </script>
 </body>

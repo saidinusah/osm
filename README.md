@@ -247,6 +247,86 @@ map.addLayer({
 });
 ```
 
+## Production deployment (Coolify)
+
+The production stack is `docker-compose.prod.yml`. It uses the `coolify` external Docker network and Traefik labels for Let's Encrypt TLS, plus a one-shot `setup` service that pulls the Ghana OSM extract, downloads fonts, and builds the MBTiles into named volumes — and a one-shot `osrm-setup` service that prepares the OSRM routing graph.
+
+### 1. DNS
+
+Point an A record at the Hetzner VPS IP, e.g.:
+
+```
+maps-nginx.saidinusah.com  →  <vps_ip>
+```
+
+### 2. Coolify resource
+
+Create a new **Docker Compose** application in Coolify pointing at this repo. Pick `docker-compose.prod.yml` as the compose file. Set the network to `coolify` (Coolify auto-creates this).
+
+### 3. Environment variables
+
+Copy [.env.example](.env.example) into Coolify's environment-variable UI and fill in:
+
+| Variable | Notes |
+|---|---|
+| `DOMAIN` | The public hostname Traefik will issue a cert for (e.g. `maps-nginx.saidinusah.com`) |
+| `POSTGRES_PASSWORD` | Long random — `openssl rand -hex 32` |
+| `REDIS_PASSWORD` | Long random |
+| `NOMINATIM_PASSWORD` | Long random — Nominatim's internal Postgres password |
+| `MAPS_INTERNAL_API_KEY` | Long random — `openssl rand -hex 32`. The gyeme-api backend sends this as `X-Maps-Key` to access `/geocode/*` and `/routing/*` |
+| `TILES_CORS_ORIGIN` | `*` while wiring up; lock to your app domains in steady-state |
+
+### 4. First deploy
+
+```bash
+# In Coolify, click Deploy.
+```
+
+What happens, in order:
+
+1. **`setup` (~10 min)** — downloads `ghana-latest.osm.pbf` (~150 MB), pulls OpenMapTiles fonts, runs Tilemaker → `ghana.mbtiles` (~280 MB).
+2. **`osrm-setup` (~5–15 min)** — copies the PBF into the OSRM volume and runs `osrm-extract → osrm-partition → osrm-customize` against the `car.lua` profile. Idempotent: skips if `ghana-latest.osrm.{partition,cells,mldgr}` already exist.
+3. **`tileserver`, `osrm`, `postgis`, `redis`** start once their respective setup deps complete.
+4. **`nominatim` starts and indexes the Ghana extract — this takes 30–60 minutes**. The healthcheck has `start_period: 3600s` so Coolify won't mark it unhealthy mid-index. Watch progress via `docker compose logs -f nominatim`.
+5. **`nginx`** starts and Traefik picks up the route. Cert issuance happens within ~30 s if DNS is correct.
+
+Total first-deploy time: ~45–75 min. Subsequent deploys reuse the volumes and start in seconds.
+
+### 5. Verify
+
+```bash
+# Public — apps fetch tiles directly
+curl https://$DOMAIN/healthz                                                         # → "ok"
+curl https://$DOMAIN/tiles/styles/ghana/style.json | head                            # → MapLibre style JSON
+
+# Internal — must include X-Maps-Key
+curl -i https://$DOMAIN/geocode/search?q=Accra                                       # → 403
+curl -i -H "X-Maps-Key: $MAPS_INTERNAL_API_KEY" https://$DOMAIN/geocode/search?q=Accra
+curl -i -H "X-Maps-Key: $MAPS_INTERNAL_API_KEY" \
+     "https://$DOMAIN/routing/route/v1/driving/-0.187,5.604;-0.197,5.614?overview=full&geometries=polyline"
+```
+
+Wire the gyeme-api backend by setting:
+
+```
+NOMINATIM_URL=https://maps-nginx.saidinusah.com/geocode
+OSRM_URL=https://maps-nginx.saidinusah.com/routing
+MAPS_INTERNAL_API_KEY=<same value as in Coolify>
+```
+
+### 6. Refreshing OSM data
+
+Re-running the deploy doesn't re-download data. To pull a fresh extract:
+
+```bash
+# In Coolify shell on the VPS:
+docker compose -f docker-compose.prod.yml stop nominatim osrm tileserver
+docker volume rm <project>_osm_data <project>_tiles_data <project>_osrm_data
+docker compose -f docker-compose.prod.yml up -d
+```
+
+(The setup containers will rerun; expect another ~45 min downtime for Nominatim re-index.)
+
 ## Maintenance
 
 ### Update Map Data

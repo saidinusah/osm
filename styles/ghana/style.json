@@ -12,11 +12,10 @@
   "sources": {
     "openmaptiles": {
       "type": "vector",
-      "tiles": ["/tiles/data/ghana/{z}/{x}/{y}.pbf"],
-      "maxzoom": 14
+      "url": "mbtiles://{ghana}"
     }
   },
-  "glyphs": "https://demotiles.maplibre.org/fonts/{fontstack}/{range}.pbf",
+  "glyphs": "fonts/{fontstack}/{range}.pbf",
   "sprite": "https://demotiles.maplibre.org/styles/osm-bright-gl-style/sprite",
   "layers": [
     {

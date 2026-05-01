@@ -1,0 +1,115 @@
+# Production nginx config for gyeme-maps-server.
+# Rendered by the nginx image's envsubst entrypoint at container start.
+# Only ${MAPS_INTERNAL_API_KEY} and ${TILES_CORS_ORIGIN} are substituted (NGINX_ENVSUBST_FILTER).
+# Standard nginx variables ($host, $remote_addr, etc.) are passed through untouched.
+
+# Per-IP rate limit zones.
+# Tiles: pan/zoom can fire dozens of requests/sec — keep this generous.
+# Routing/geocode: backend is the only legitimate caller, much tighter.
+limit_req_zone $binary_remote_addr zone=tiles_zone:10m rate=120r/s;
+limit_req_zone $binary_remote_addr zone=api_zone:10m rate=10r/s;
+
+# Match the X-Maps-Key header against the configured key.
+# An empty configured key would match an empty header — explicitly fail-closed below.
+map $http_x_maps_key $maps_key_ok {
+    default                            "0";
+    "${MAPS_INTERNAL_API_KEY}"         "1";
+}
+
+server {
+    listen 80;
+    server_name _;
+
+    # Gzip compression
+    gzip on;
+    gzip_types application/json application/javascript text/css text/html application/x-protobuf application/vnd.mapbox-vector-tile;
+    gzip_min_length 256;
+
+    # Root for static files (viewer)
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Main viewer page
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Health check (used by Coolify / Traefik)
+    location = /healthz {
+        access_log off;
+        return 200 "ok\n";
+        add_header Content-Type text/plain;
+    }
+    location = /health {
+        access_log off;
+        return 200 "ok\n";
+        add_header Content-Type text/plain;
+    }
+
+    # ────────────────────────────────────────────────────────────────────
+    # /tiles/ — public, CORS-allowed, rate-limited per IP
+    # Apps fetch directly from here; cached aggressively.
+    # ────────────────────────────────────────────────────────────────────
+    location /tiles/ {
+        limit_req zone=tiles_zone burst=200 nodelay;
+
+        # CORS — allow the configured app origins to fetch style.json + tiles.
+        add_header Access-Control-Allow-Origin "${TILES_CORS_ORIGIN}" always;
+        add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "Range, Content-Type" always;
+        add_header Access-Control-Expose-Headers "Content-Length, Content-Range" always;
+
+        if ($request_method = OPTIONS) {
+            return 204;
+        }
+
+        proxy_pass http://tileserver:8080/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Cache tiles aggressively
+        proxy_cache_valid 200 7d;
+        proxy_cache_valid 404 1m;
+        add_header X-Cache-Status $upstream_cache_status;
+    }
+
+    # ────────────────────────────────────────────────────────────────────
+    # /routing/ — backend-only via X-Maps-Key header
+    # ────────────────────────────────────────────────────────────────────
+    location /routing/ {
+        limit_req zone=api_zone burst=20 nodelay;
+
+        if ($maps_key_ok != "1") {
+            return 403;
+        }
+
+        proxy_pass http://osrm:5000/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # ────────────────────────────────────────────────────────────────────
+    # /geocode/ — backend-only via X-Maps-Key header
+    # ────────────────────────────────────────────────────────────────────
+    location /geocode/ {
+        limit_req zone=api_zone burst=20 nodelay;
+
+        if ($maps_key_ok != "1") {
+            return 403;
+        }
+
+        proxy_pass http://nominatim:8080/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Nominatim's first-boot indexing can take 30–60 min for the Ghana extract.
+        # Don't let upstream timeouts mask "still indexing" with a 504.
+        proxy_read_timeout 60s;
+    }
+}

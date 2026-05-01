@@ -48,7 +48,8 @@ make clean            # Remove generated data files
 - `tiles/` — TileServer GL config + generated `.mbtiles` file
 - `styles/ghana/style.json` — MapLibre GL style definition (Mapbox Style Spec v8)
 - `viewer/index.html` — Interactive map viewer using MapLibre GL JS
-- `nginx/conf.d/default.conf` — Nginx proxy/caching config
+- `nginx/dev.conf` — Dev nginx config (used by `docker-compose.yml`)
+- `nginx/templates/default.conf.template` — Prod nginx template, rendered via envsubst at container start (used by `Dockerfile.nginx` + `docker-compose.prod.yml`). Contains rate limits, CORS for `/tiles/`, and `X-Maps-Key` gating on `/geocode/` and `/routing/`
 
 ## Database Schema (amev schema)
 

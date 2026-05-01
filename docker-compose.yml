@@ -4,16 +4,8 @@ services:
     image: nginx:alpine
     container_name: easy-nginx
     restart: unless-stopped
-    expose:
-      - "80"
-    networks:
-      - default
-      - coolify
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.amev-maps.rule=Host(`${DOMAIN:?DOMAIN is required}`)
-      - traefik.http.routers.amev-maps.entrypoints=http
-      - traefik.http.services.amev-maps.loadbalancer.server.port=80
+    ports:
+      - "8090:80"
     volumes:
       - ./nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro
       - nginx_cache:/var/cache/nginx
@@ -118,6 +110,3 @@ volumes:
 networks:
   default:
     name: easy-maps-network
-  coolify:
-    external: true
-    name: coolify
