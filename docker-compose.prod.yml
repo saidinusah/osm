@@ -27,7 +27,27 @@ services:
         condition: service_completed_successfully
     restart: "no"
 
-  # Nginx - Reverse proxy + viewer SPA (built from Dockerfile)
+  # Caddy - TLS terminator. Auto-issues Let's Encrypt certs for ${DOMAIN}.
+  # Only this container is exposed to the internet; everything else is internal.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"   # HTTP/3 (QUIC)
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN is required}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@saidinusah.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data       # certs (do not delete)
+      - caddy_config:/config
+    depends_on:
+      nginx:
+        condition: service_started
+
+  # Nginx - Reverse proxy + viewer SPA (built from Dockerfile). Internal-only.
   nginx:
     build:
       context: .
@@ -38,16 +58,6 @@ services:
     environment:
       MAPS_INTERNAL_API_KEY: ${MAPS_INTERNAL_API_KEY:?MAPS_INTERNAL_API_KEY is required}
       TILES_CORS_ORIGIN: ${TILES_CORS_ORIGIN:-*}
-    networks:
-      - default
-      - coolify
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.amev-maps.rule=Host(`${DOMAIN:?DOMAIN is required}`)
-      - traefik.http.routers.amev-maps.entrypoints=https
-      - traefik.http.routers.amev-maps.tls=true
-      - traefik.http.routers.amev-maps.tls.certresolver=letsencrypt
-      - traefik.http.services.amev-maps.loadbalancer.server.port=80
     depends_on:
       tileserver:
         condition: service_started
@@ -175,10 +185,9 @@ volumes:
   osrm_data:
   osm_data:
   styles_data:
+  caddy_data:
+  caddy_config:
 
 networks:
   default:
     name: amev-maps-network
-  coolify:
-    external: true
-    name: coolify
