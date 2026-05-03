@@ -1,4 +1,4 @@
-# Use tilemaker image as base — already multi-arch, binary at /usr/local/bin/tilemaker
+# Use tilemaker image as base — multi-arch, binary at /usr/src/app/tilemaker.
 FROM ghcr.io/systemed/tilemaker:master
 
 # Install download/extract tools on top
@@ -7,6 +7,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Tilemaker's image places the binary at /usr/src/app/tilemaker and relies on
+# its ENTRYPOINT to invoke it. We override ENTRYPOINT below, so symlink the
+# binary into PATH and keep its bundled resources accessible from the same
+# working directory the upstream image uses.
+RUN ln -sf /usr/src/app/tilemaker /usr/local/bin/tilemaker
 
 WORKDIR /app
 
