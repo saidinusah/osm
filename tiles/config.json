@@ -1,5 +1,6 @@
 {
   "options": {
+    "publicUrl": "/tiles/",
     "paths": {
       "root": "",
       "styles": "/styles",
