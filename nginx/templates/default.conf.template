@@ -20,6 +20,11 @@ server {
     listen 80;
     server_name _;
 
+    # Resolve upstreams via Docker's embedded DNS at request time, not config-load time.
+    # Without this, nginx would refuse to start if any upstream container hadn't yet
+    # registered its name in DNS, and would not survive an upstream restart.
+    resolver 127.0.0.11 valid=10s ipv6=off;
+
     # Gzip compression
     gzip on;
     gzip_types application/json application/javascript text/css text/html application/x-protobuf application/vnd.mapbox-vector-tile;
@@ -63,7 +68,10 @@ server {
             return 204;
         }
 
-        proxy_pass http://tileserver:8080/;
+        # Variable in proxy_pass forces runtime DNS resolution.
+        rewrite ^/tiles/(.*)$ /$1 break;
+        set $upstream_tileserver tileserver:8080;
+        proxy_pass http://$upstream_tileserver;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -85,7 +93,9 @@ server {
             return 403;
         }
 
-        proxy_pass http://osrm:5000/;
+        rewrite ^/routing/(.*)$ /$1 break;
+        set $upstream_osrm osrm:5000;
+        proxy_pass http://$upstream_osrm;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -102,7 +112,9 @@ server {
             return 403;
         }
 
-        proxy_pass http://nominatim:8080/;
+        rewrite ^/geocode/(.*)$ /$1 break;
+        set $upstream_nominatim nominatim:8080;
+        proxy_pass http://$upstream_nominatim;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
