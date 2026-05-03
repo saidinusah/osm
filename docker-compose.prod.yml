@@ -38,7 +38,7 @@ services:
     expose:
       - "80"
     environment:
-      MAPS_INTERNAL_API_KEY: ${MAPS_INTERNAL_API_KEY}
+      MAPS_INTERNAL_API_KEY: ${MAPS_INTERNAL_API_KEY:-test}
       TILES_CORS_ORIGIN: ${TILES_CORS_ORIGIN:-*}
     networks:
       - default
@@ -122,7 +122,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-easy_maps}
       POSTGRES_USER: ${POSTGRES_USER:-easy}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-test}
     volumes:
       - postgis_data:/var/lib/postgresql/data
       - ./scripts:/scripts:ro
@@ -146,7 +146,7 @@ services:
       - "6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-test}
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 30s
@@ -162,7 +162,7 @@ services:
       - "8080"
     environment:
       PBF_PATH: /data/ghana-latest.osm.pbf
-      NOMINATIM_PASSWORD: ${NOMINATIM_PASSWORD}
+      NOMINATIM_PASSWORD: ${NOMINATIM_PASSWORD:-test}
     volumes:
       - nominatim_pgdata:/var/lib/postgresql/data
       - osm_data:/data
